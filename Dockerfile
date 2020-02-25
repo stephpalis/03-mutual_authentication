@@ -5,6 +5,7 @@ RUN pip3 install protobuf
 RUN pip3 install pynacl
 RUN pip3 install passlib
 RUN pip3 install argon2_cffi
+RUN pip3 install pyyaml
 COPY . /app
 WORKDIR /app
 ENTRYPOINT ["python", "/app/authentication.py"]
