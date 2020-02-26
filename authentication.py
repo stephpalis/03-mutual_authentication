@@ -16,7 +16,7 @@ import yaml
 serverPublicKey = b''
 serverSecretKey = b''
 
-config = sys.argv[1]
+configFile = sys.argv[1]
 usersToPasswords = {}
 publicKeyValue = {}
 privateKeyValue = {}
@@ -24,20 +24,46 @@ lock = threading.Lock()
 IPtoPreauth = {}
 serverCert = None
 status = None
+pinned = {}
+trusted = {}
 
-'''def readDatabase():
+def readDatabase(config):
     global usersToPasswords
-    f = open(database, 'r')
-    lines = f.readlines()
-    for i in lines:
-        data = i.split(":")
-        usersToPasswords[data[0]] = data[1][:-1]
-    f.close()
+    for i in config["users"]:
+        name = i["name"]
+        password = i["password_hash"]
+        usersToPasswords[name] = password
     print(usersToPasswords)
-'''
 
-def hashCert(msg):
-    hashed = hashlib.sha256()
+def readPinned(config):
+    global pinned
+    pinnedCertStore = config["pinned_certificate_store"]
+    f = open(pinnedCertStore, "rb")
+    contents = f.read()
+    store = nstp_v4_pb2.PinnedCertificateStore()
+    store.ParseFromString(contents)
+
+    for i in store.pinned_certificates:
+        print(i)
+        pinned[i.subject] = (i.certificate.value, i.certificate.algorithm)
+    print(pinned)
+
+def readTrusted(config):
+    global trusted
+    trustedCertStore = config["trusted_certificate_store"]
+    f = open(trustedCertStore, "rb")
+    contents = f.read()
+    store = nstp_v4_pb2.CertificateStore()
+    store.ParseFromString(contents)
+
+    for i in store.certificates:
+        sha256 = hashCert(i, 1)
+        sha512 = hashCert(i, 2)
+        trusted[sha256] = i
+        trusted[sha512] = i
+    print("\n\n" , trusted, "\n\n")
+
+def bytesOfFields(msg):
     packed = b''
     for i in msg.subjects:
         packed += i.encode("UTF-8")
@@ -50,62 +76,50 @@ def hashCert(msg):
     if msg.HasField("issuer"):
         packed += msg.issuer.value
         packed += msg.issuer.algorithm.to_bytes(1, "big")
+    return packed
+
+def hashCert(msg, alg):
+    packed = bytesOfFields(msg)
     if msg.issuer_signature != b'':
         packed += msg.issuer_signature
-    hashed = hashlib.sha256(packed)
+    if alg == 1:
+        hashed = hashlib.sha256(packed)
+    elif alg == 2:
+        hashed = hashlib.sha512(packed)
     return hashed.digest()
 
-def verifySignature(msg):
+def verifySignature(msg, key):
     hashed = nacl.bindings.crypto_sign_ed25519ph_state()
-    for i in msg.subjects:
-        packed = i.encode("UTF-8")
-        nacl.bindings.crypto_sign_ed25519ph_update(hashed, packed)
-    #packed = struct.pack("!Q", msg.valid_from)
-    nacl.bindings.crypto_sign_ed25519ph_update(hashed, msg.valid_from.to_bytes(8, "big"))
-    nacl.bindings.crypto_sign_ed25519ph_update(hashed, msg.valid_length.to_bytes(4, "big"))
-    for i in msg.usages:
-        nacl.bindings.crypto_sign_ed25519ph_update(hashed, i.to_bytes(1, "big"))
-    nacl.bindings.crypto_sign_ed25519ph_update(hashed, msg.encryption_public_key)
-    nacl.bindings.crypto_sign_ed25519ph_update(hashed, msg.signing_public_key)
-
-    if msg.HasField("issuer"):
-        nacl.bindings.crypto_sign_ed25519ph_update(hashed, msg.issuer.value)
-        nacl.bindings.crypto_sign_ed25519ph_update(hashed, msg.issuer.algorithm.to_bytes(1, "big"))
-
-    print(hashed)
-    f = open("data/ca.key", "rb")
-    k = f.read()
-    key = nstp_v4_pb2.PrivateKey()
-    key.ParseFromString(k) 
-    print(key)
-    print(len(key.signing_private_key))
-    value = nacl.bindings.crypto_sign_ed25519ph_final_verify(hashed, msg.issuer_signature, key.signing_private_key)
-    print("VALUE : ", value)
+    packed = bytesOfFields(msg)
+    nacl.bindings.crypto_sign_ed25519ph_update(hashed, packed)
+    value = nacl.bindings.crypto_sign_ed25519ph_final_verify(hashed, msg.issuer_signature, key)
+    print("VALUE :", value )
+    return value
 
 def readConfig():
-    global config
-    with open(config) as file:
+    global configFile
+    with open(configFile) as file:
         c = yaml.load(file, Loader=yaml.FullLoader)
         print(c)
         return c
 
 def queryStatusServer(cert):
+    global status
     config = readConfig()
-    status = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sPort = config["status_server"]["port"]
     sAddr = config["status_server"]["ipv4_address"]
     if sAddr == "...":
         sAddr = config["status_server"]["ipv6_address"]
-    print(sPort)
-    print(sAddr)
     certHash = nstp_v4_pb2.CertificateHash()
-    # TODO do I send the serverCert or my cert?
-    certHash.value = hashCert(cert)
-    certHash.algorithm = 1
+
+    hashAlg = 1
+    certHash.value = hashCert(cert, hashAlg)
+    certHash.algorithm = hashAlg
     request = nstp_v4_pb2.CertificateStatusRequest()
     request.certificate.CopyFrom(certHash)
     print("REQUEST ", request)
     status.sendto(request.SerializeToString(), (sAddr, sPort))
+    # TODO what if doesn't work - add try catch
     j = status.recvfrom(2048)[0]
     print("RESPONSE ", j)
 
@@ -115,33 +129,75 @@ def queryStatusServer(cert):
     print(resp)
     return resp
 
-
 def authenticateCert(msg):
     global serverCert
+    global trusted
     cert = msg.client_hello.certificate
-    # TODO check pinned certs
-    # TODO Match Expected values
+    auth = True
+    # Check pinned certs
+    for i in cert.subjects:
+        if pinned.get(i) != None:
+            pinnedValue = pinned[i][0]
+            alg = pinned[i][1]
+            hashed = hashCert(cert, alg)
+            if hashed != pinnedValue: 
+                auth = False
+                return false
+
+    # Match Expected values
+    numOfSubjects = len(cert.subjects)
+    value =  False
+    # If cert.usage not one of client_authentication, reject
+    for i in cert.usages:
+        if i == 1 and numOfSubjects == 1:
+            value = True
+            break
+    if not value:
+        auth = False
+        return auth
+
     # TODO Cert issuers must refer to a trusted cert/self-signed
-    # TODO Valid at time
+
+    # Valid at time
     print(time.time())
     print(cert.valid_from + cert.valid_length)
     if cert.valid_from + cert.valid_length < time.time():
         print("invalid time")
-        return error_message("Invalid validity time")
-    # TODO Labeled with an approrpriate usage flag
+        auth = False
+        return auth
+
+    # Labeled with an approrpriate usage flag
     u = False
     for i in cert.usages:
         if i == 1:
             u = True
     if not u:
-        return error_message("Invalid usages")
-    # TODO Pass verification against public key
-    # TODO Labeled as valid by a status server
+        auth = u
+        return auth
+
+    # Pass verification against public key
+    issuerHash = cert.issuer.value
+    if trusted.get(issuerHash) == None:
+        print("NO HASH")
+        auth = False
+        return auth
+    else:
+        key = trusted[issuerHash].signing_public_key
+        value = verifySignature(cert, key)
+        if not value:
+            print("WRONG SIG")
+            auth = False
+            return auth
+
+    # Labeled as valid by a status server
     resp = queryStatusServer(cert)
     print("STATUS FOR CLIENT CERT ", resp.status)
-    if resp.status != 1:
+    # TODO what if unknown
+    if resp.status == 0 or resp.status == 2:
         print("BAD STATUS")
-        return error_message("Bad status")
+        auth = False
+        return auth
+    return auth
 
 
 def error_message(reason):
@@ -158,10 +214,9 @@ def sendServerHello(msg, resp):
     response.server_hello.major_version = 4
     response.server_hello.minor_version = 1
     response.server_hello.user_agent = "hello client"
-    #if msg.client_hello.public_key != b'':
-    #response.server_hello.public_key = bytes(serverPublicKey)
     response.server_hello.certificate.CopyFrom(serverCert)
-    response.server_hello.certificate_status.CopyFrom(resp)
+    if resp != b'':
+        response.server_hello.certificate_status.CopyFrom(resp)
     return response
 
 def decryptMessage(msg, keys):
@@ -351,15 +406,26 @@ def connection_thread(c, addr):
     user = ""
 
     if read.HasField("client_hello"):
-        if read.client_hello.certificate != b'':
+        if read.client_hello.HasField("certificate"):
             # Cert Authentication
             #TODO
             print("CERT AUTH")
-            authenticateCert(read)
+            authenticated = authenticateCert(read)
+            if not authenticated:
+                response = error_message("Cert was not authenticated")
+                sentMsg = response.SerializeToString()
+                sentLen = struct.pack("!H", len(sentMsg))
+                c.sendall(sentLen + sentMsg)
+                lock.acquire()
+                IPtoPreauth[remote] -= 1
+                lock.release()
+                c.close()
+                return 0
+
             resp = queryStatusServer(serverCert)
             clientPublicKey =read.client_hello.certificate.encryption_public_key
             #TODO don't always authenticate - if authenticate cert returns true
-            authenticated =True
+            #authenticated =True
             pass
 
         else:
@@ -367,6 +433,7 @@ def connection_thread(c, addr):
             print("PASSWORD AUTH")
             # Password Authentication
             clientPublicKey = read.client_hello.public_key
+            resp = b''
             if clientPublicKey == b'':
                 response = error_message("Must include a public_key")
                 sentMsg = response.SerializeToString()
@@ -378,10 +445,10 @@ def connection_thread(c, addr):
                 c.close()
                 return 0
         response = sendServerHello(read, resp)
-        #TODO uncomment
          
         try:
             serverPublicKey = serverCert.encryption_public_key
+            print(serverPublicKey)
             keys = nacl.bindings.crypto_kx_server_session_keys(serverPublicKey,
                 serverSecretKey, clientPublicKey)
         except nacl.exceptions.CryptoError:
@@ -465,19 +532,26 @@ def main():
     global IPtoPreauth
     global serverCert
     global status
+    global config
+    global pinned
     print("RUNNING")
-    #readDatabase()
     config = readConfig()
+    readTrusted(config)
+    readPinned(config)
+    readDatabase(config)
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     port = config["nstp_server"]["port"]
     print("PORT ", port)
     host = '0.0.0.0'
     s.bind((host, port))
     s.listen(5)
-    #s.settimeout(10)
+
+    status = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+
     
-    serverSecretKey = PrivateKey.generate()
-    serverPublicKey = serverSecretKey.public_key
+    # TODO still need?
+    #serverSecretKey = PrivateKey.generate()
+    #serverPublicKey = serverSecretKey.public_key
 
     certStore = config["trusted_certificate_store"]
     pinnedCertStore = config["pinned_certificate_store"]
@@ -489,6 +563,7 @@ def main():
     read = nstp_v4_pb2.CertificateStore()
     read.ParseFromString(contents)
     print("Cert Store: " , read)
+    trusted = read
 
     f = open(pinnedCertStore, "rb")
     contents = f.read()
@@ -503,9 +578,11 @@ def main():
     serverCert = read
     print("Server Cert : " , read)
 
-    # TODO need private key
-    #h = hashCert(read)
-    #print("HASHED ", h)
+    # TODO delete
+    for i in trusted.certificates:
+        key = i.signing_public_key
+    verifySignature(read, key)
+    # TODO end delete
 
     f = open(serverPrivateKey, "rb")
     contents = f.read()
