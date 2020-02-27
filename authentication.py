@@ -142,7 +142,7 @@ def authenticateCert(msg):
             hashed = hashCert(cert, alg)
             if hashed != pinnedValue: 
                 auth = False
-                return false
+                return auth
 
     # Match Expected values
     numOfSubjects = len(cert.subjects)
@@ -156,7 +156,6 @@ def authenticateCert(msg):
         auth = False
         return auth
 
-    # TODO Cert issuers must refer to a trusted cert/self-signed
 
     # Valid at time
     print(time.time())
@@ -175,8 +174,15 @@ def authenticateCert(msg):
         auth = u
         return auth
 
+    # Refer to a trustedCert or be self-signed
     # Pass verification against public key
-    issuerHash = cert.issuer.value
+    if cert.HasField("issuer"):
+        # When has issuer field - not self-signed
+        issuerHash = cert.issuer.value
+    else:
+        # Self-signed
+        issuerHash = hashCert(cert, 1)
+
     if trusted.get(issuerHash) == None:
         print("NO HASH")
         auth = False
@@ -189,6 +195,8 @@ def authenticateCert(msg):
             auth = False
             return auth
 
+        
+
     # Labeled as valid by a status server
     resp = queryStatusServer(cert)
     print("STATUS FOR CLIENT CERT ", resp.status)
@@ -198,7 +206,6 @@ def authenticateCert(msg):
         auth = False
         return auth
     return auth
-
 
 def error_message(reason):
     response = nstp_v4_pb2.NSTPMessage()
@@ -408,11 +415,11 @@ def connection_thread(c, addr):
     if read.HasField("client_hello"):
         if read.client_hello.HasField("certificate"):
             # Cert Authentication
-            #TODO
             print("CERT AUTH")
             authenticated = authenticateCert(read)
             if not authenticated:
                 response = error_message("Cert was not authenticated")
+                print(response)
                 sentMsg = response.SerializeToString()
                 sentLen = struct.pack("!H", len(sentMsg))
                 c.sendall(sentLen + sentMsg)
