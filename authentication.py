@@ -129,6 +129,13 @@ def queryStatusServer(cert):
     print(resp)
     return resp
 
+def validTime(cert):
+    auth = True
+    if cert.valid_from + cert.valid_length < time.time():
+        print("invalid time")
+        auth = False
+    return auth
+
 def authenticateCert(msg):
     global serverCert
     global trusted
@@ -160,9 +167,8 @@ def authenticateCert(msg):
     # Valid at time
     print(time.time())
     print(cert.valid_from + cert.valid_length)
-    if cert.valid_from + cert.valid_length < time.time():
-        print("invalid time")
-        auth = False
+    auth = validTime(cert)
+    if not auth:
         return auth
 
     # Labeled with an approrpriate usage flag
@@ -200,8 +206,25 @@ def authenticateCert(msg):
     if msg.client_hello.HasField("certificate_status"):
         # TODO validate CertStatusResponse
         # Valid time
+        auth = validTime(msg.client_hello.certificate_status)
+        if not auth:
+            return auth
+
         # Check for valid status
+        # TODO query status server or just the status given
+        if msg.client_hello.certificate_status.status != 1:
+            return False
+        resp = queryStatusServer(msg.client_hello.certificate_status.status_certificate)
+        if resp.status == 0 or resp.status == 2:
+            print("BAD STATUS")
+            auth = False
+            return auth
+
         # HashCert (client cert) and check that it matches csr.certificate
+        hashed = hashCert(msg.client_hello.certificate_status.status_certificate, 
+        msg.client_hello.certificate_status.certificate.algorithm)
+        if hashed != msg.client_hello.certificate_status.certificate.value:
+            return False
 
         # Validating status_cert -->
         ## status server ip in config should be in subject list
