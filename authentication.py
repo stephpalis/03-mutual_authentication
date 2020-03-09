@@ -148,6 +148,7 @@ def authenticateCert(msg):
     numOfSubjects = len(cert.subjects)
     value =  False
     # If cert.usage not one of client_authentication, reject
+    #TODO need to check subject is 127.0.0.1
     for i in cert.usages:
         if i == 1 and numOfSubjects == 1:
             value = True
@@ -155,7 +156,6 @@ def authenticateCert(msg):
     if not value:
         auth = False
         return auth
-
 
     # Valid at time
     print(time.time())
@@ -179,6 +179,7 @@ def authenticateCert(msg):
     if cert.HasField("issuer"):
         # When has issuer field - not self-signed
         issuerHash = cert.issuer.value
+        print("HASHHASHHASH ", issuerHash)
     else:
         # Self-signed
         issuerHash = hashCert(cert, 1)
@@ -195,16 +196,33 @@ def authenticateCert(msg):
             auth = False
             return auth
 
-        
-
     # Labeled as valid by a status server
-    resp = queryStatusServer(cert)
-    print("STATUS FOR CLIENT CERT ", resp.status)
-    # TODO what if unknown
-    if resp.status == 0 or resp.status == 2:
-        print("BAD STATUS")
-        auth = False
-        return auth
+    if msg.client_hello.HasField("certificate_status"):
+        # TODO validate CertStatusResponse
+        # Valid time
+        # Check for valid status
+        # HashCert (client cert) and check that it matches csr.certificate
+
+        # Validating status_cert -->
+        ## status server ip in config should be in subject list
+        ## usage = status_signing
+        ## valid time
+        ## issuer hash matches the client_issuer cert (hashed in two different ways) 
+        ###-- hash according to alg in status response
+        ## Issuer signature matches, public key from cert from trust store in step above
+
+        # Verify status signature using status server public key from csr.status_cert
+
+        pass
+    else:
+        resp = queryStatusServer(cert)
+        print("STATUS FOR CLIENT CERT ", resp.status)
+        # TODO what if unknown
+        if resp.status == 0 or resp.status == 2:
+            print("BAD STATUS")
+            auth = False
+            return auth
+
     return auth
 
 def error_message(reason):
@@ -429,10 +447,9 @@ def connection_thread(c, addr):
                 c.close()
                 return 0
 
+            # TODO validate resp
             resp = queryStatusServer(serverCert)
-            clientPublicKey =read.client_hello.certificate.encryption_public_key
-            #TODO don't always authenticate - if authenticate cert returns true
-            #authenticated =True
+            clientPublicKey = read.client_hello.certificate.encryption_public_key
             pass
 
         else:
