@@ -657,11 +657,11 @@ def main():
     serverCert = read
     print("Server Cert : " , read)
 
-    # TODO delete
+    '''# TODO delete
     for i in trusted.certificates:
         key = i.signing_public_key
     verifySignature(read, key)
-    # TODO end delete
+    # TODO end delete'''
 
     f = open(serverPrivateKey, "rb")
     contents = f.read()
