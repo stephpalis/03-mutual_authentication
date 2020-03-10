@@ -24,6 +24,8 @@ lock = threading.Lock()
 IPtoPreauth = {}
 serverCert = None
 status = None
+serverIP = None
+# TODO change pinned
 pinned = {}
 trusted = {}
 
@@ -105,11 +107,13 @@ def readConfig():
 
 def queryStatusServer(cert):
     global status
+    global serverIP
     config = readConfig()
     sPort = config["status_server"]["port"]
     sAddr = config["status_server"]["ipv4_address"]
     if sAddr == "...":
         sAddr = config["status_server"]["ipv6_address"]
+    serverIP = sAddr
     certHash = nstp_v4_pb2.CertificateHash()
 
     hashAlg = 1
@@ -139,8 +143,10 @@ def validTime(cert):
 def authenticateCert(msg):
     global serverCert
     global trusted
+    global serverIP
     cert = msg.client_hello.certificate
     auth = True
+    # TODO cert and status cert must share a common trust root.
     # Check pinned certs
     for i in cert.subjects:
         if pinned.get(i) != None:
@@ -196,12 +202,16 @@ def authenticateCert(msg):
         return auth
     else:
         key = trusted[issuerHash].signing_public_key
+        # TODO cert signing
+        if 1 not in trusted[issuerHash].usages:
+            return False
         value = verifySignature(cert, key)
         if not value:
             print("WRONG SIG")
             auth = False
             return auth
 
+    # TODO make sure issuer of status server is legit
     # Labeled as valid by a status server
     if msg.client_hello.HasField("certificate_status"):
         # TODO validate CertStatusResponse
@@ -227,14 +237,36 @@ def authenticateCert(msg):
             return False
 
         # Validating status_cert -->
+        status_cert = msg.client_hello.certificate_status.status_certificate
         ## status server ip in config should be in subject list
-        ## usage = status_signing
-        ## valid time
-        ## issuer hash matches the client_issuer cert (hashed in two different ways) 
-        ###-- hash according to alg in status response
-        ## Issuer signature matches, public key from cert from trust store in step above
+        auth = False
+        for i in status_cert.subjects:
+            if i == serverIP:
+                auth = True
+        if not auth:
+            return auth
 
-        # Verify status signature using status server public key from csr.status_cert
+        ## usage = status_signing
+        auth = False
+        for i in status_cert.usages:
+            if i == 3:
+                auth = True
+        if not auth:
+            return auth
+
+        ## valid time
+        auth = validTime(status_cert)
+        if not auth:
+            return auth
+
+        ## TODO: issuer hash matches the client_issuer cert (hashed in two different ways) 
+        ###-- hash according to alg in status response
+
+        ## TODO: Issuer signature matches, public key from cert from trust store in step above
+
+        # TODO: Verify status signature using status server public key from csr.status_cert
+        
+        # TODO: query status server that trusted cert has not been revoked
 
         pass
     else:
