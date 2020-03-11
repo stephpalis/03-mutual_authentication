@@ -140,9 +140,11 @@ def validTime(cert):
         auth = False
     return auth
 
-def authenticateStatusResponse(msg):
+def authenticateStatusResponse(response):
         # TODO validate CertStatusResponse
         # Valid time
+        msg = response.client_hello.certificate_status
+        cert = response.client_hello.certificate
         auth = validTime(msg)
         if not auth:
             print("invalid response time")
@@ -160,8 +162,7 @@ def authenticateStatusResponse(msg):
             return auth'''
 
         # HashCert (client cert) and check that it matches csr.certificate
-        hashed = hashCert(msg.status_certificate, 
-        msg.certificate.algorithm)
+        hashed = hashCert(cert, msg.certificate.algorithm)
         if hashed != msg.certificate.value:
             print("doesn't match csr.cert")
             return False
@@ -283,7 +284,7 @@ def authenticateCert(msg):
             auth = False
             return auth'''
     
-    auth = authenticateStatusResponse(resp)
+    auth = authenticateStatusResponse(msg)
 
     return auth
 
