@@ -173,6 +173,7 @@ def authenticateStatusResponse(msg, clientCert):
             if i == serverIP:
                 auth = True
         if not auth:
+            print("BAD IP")
             return auth
 
         ## usage = status_signing
@@ -181,11 +182,13 @@ def authenticateStatusResponse(msg, clientCert):
             if i == 3:
                 auth = True
         if not auth:
+            print("not status_signing")
             return auth
 
         ## valid time
         auth = validTime(status_cert)
         if not auth:
+            print("invalid status cert time")
             return auth
 
         ## TODO: issuer hash matches the client_issuer cert (hashed in two different ways) 
@@ -196,6 +199,7 @@ def authenticateStatusResponse(msg, clientCert):
         # TODO: Verify status signature using status server public key from csr.status_cert
         
         # TODO: query status server that trusted cert has not been revoked
+        return auth
 
 
 def authenticateCert(msg):
