@@ -305,7 +305,7 @@ def authenticateCert(msg):
         # TODO: query status server that trusted cert has not been revoked
         issuer_cert = trusted[issuerHash]
 
-        f = open("issuer.crt", "w")
+        f = open("issuer.crt", "wb")
         f.write(issuer_cert.SerializeToString())
         f.close()
 
