@@ -25,7 +25,7 @@ IPtoPreauth = {}
 serverCert = None
 status = None
 serverIP = None
-# TODO change pinned
+# TODO change pinned**** DON"T IGNORE****
 pinned = {}
 trusted = {}
 
@@ -304,6 +304,11 @@ def authenticateCert(msg):
 
         # TODO: query status server that trusted cert has not been revoked
         issuer_cert = trusted[issuerHash]
+
+        f = open("issuer.crt", "w")
+        f.write(issuer_cert.SerializeToString())
+        f.close()
+
         resp = queryStatusServer(issuer_cert)
         if resp != 1:
             print("Trusted Cert has been revoked")
