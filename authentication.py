@@ -304,6 +304,7 @@ def authenticateCert(msg):
 
         # TODO: query status server that trusted cert has not been revoked
         issuer_cert = trusted[issuerHash]
+        print(issuer_cert)
 
         # TODO DELETE
         '''f = open("issuer.crt", "wb")
