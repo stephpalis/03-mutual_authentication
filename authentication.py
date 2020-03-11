@@ -209,7 +209,7 @@ def authenticateStatusResponse(msg, clientCert):
         ## TODO: Issuer signature matches, public key from cert from trust store in step above
         #take root cert.public_signing_key
         #verifySignature on status_certificate
-        key = root_cert.public_signing_key
+        key = root_cert.signing_public_key
         if not verifySignature(msg.status_certificate, key):
             return False
 
