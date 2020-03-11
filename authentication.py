@@ -138,7 +138,15 @@ def queryStatusServer(cert):
     print("REQUEST ", request)
     status.sendto(request.SerializeToString(), (sAddr, sPort))
     # TODO what if doesn't work - add try catch
-    j = status.recvfrom(2048)[0]
+    i = 0
+    while i < 5: 
+        try:
+            i += 1
+            j = status.recvfrom(2048)[0]
+        except Exception:
+            if i > 5:
+                return 0
+
     print("RESPONSE ", j)
 
     resp = nstp_v4_pb2.CertificateStatusResponse()
@@ -223,7 +231,7 @@ def authenticateStatusResponse(msg, clientCert):
         if not verifySignature(msg.status_certificate, key):
             return False
 
-        # TODO: Verify status signature using status server public key from csr.status_cert
+        #  Verify status signature using status server public key from csr.status_cert
         status_server_pub_key = msg.status_certificate.signing_public_key
         if not verifyResponseSignature(msg, status_server_pub_key):
             print("Bad status_sig")
@@ -306,6 +314,8 @@ def authenticateCert(msg):
         issuer_cert = trusted[issuerHash]
 
         resp = queryStatusServer(issuer_cert)
+        if resp == 0:
+            return False
         if resp.status != 1:
             print("Trusted Cert has been revoked")
             return False
@@ -318,6 +328,8 @@ def authenticateCert(msg):
         resp = msg.client_hello.certificate_status
     else:
         resp = queryStatusServer(cert)
+        if resp == 0:
+            return False
         print("STATUS FOR CLIENT CERT ", resp.status)
         '''# TODO what if unknown
         if resp.status == 0 or resp.status == 2:
@@ -553,6 +565,8 @@ def connection_thread(c, addr):
 
             # TODO validate resp
             resp = queryStatusServer(serverCert)
+            if resp == 0:
+                return False
             clientPublicKey = read.client_hello.certificate.encryption_public_key
             pass
 
