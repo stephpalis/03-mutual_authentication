@@ -140,7 +140,7 @@ def queryStatusServer(cert):
     # TODO what if doesn't work - add try catch
     i = 0
     j = None
-    while i < 5 or j != None: 
+    while j != None or i < 5: 
         try:
             i += 1
             print(i)
