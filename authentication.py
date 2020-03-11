@@ -98,6 +98,20 @@ def verifySignature(msg, key):
     print("VALUE :", value )
     return value
 
+def verifyResponseSignature(msg, key):
+    hashed = nacl.bindings.crypto_sign_ed25519ph_state()
+    packed = msg.certificate.value
+    packed += msg.certificate.algorithm
+    packed += msg.status
+    packed += msg.valid_from
+    packed += msg.valid_length
+    packed += bytesOfFields(msg.status_certificate)
+    packed += msg.status_certificate.issuer_signature
+    nacl.bindings.crypto_sign_ed25519ph_update(hashed, packed)
+    value = nacl.bindings.crypto_sign_ed25519ph_final_verify(hashed, msg.status_signature, key)
+    print("RESPONSE VALUE :", value )
+    return value
+
 def readConfig():
     global configFile
     with open(configFile) as file:
@@ -141,7 +155,6 @@ def validTime(cert):
     return auth
 
 def authenticateStatusResponse(msg, clientCert):
-        # TODO validate CertStatusResponse
         # Valid time
         auth = validTime(msg)
         if not auth:
@@ -149,7 +162,6 @@ def authenticateStatusResponse(msg, clientCert):
             return auth
 
         # Check for valid status
-        # TODO query status server or just the status given
         if msg.status != 1:
             print("invalid status")
             return False
@@ -206,14 +218,16 @@ def authenticateStatusResponse(msg, clientCert):
             print("don't trust me")
             return False
 
-        ## TODO: Issuer signature matches, public key from cert from trust store in step above
-        #take root cert.public_signing_key
-        #verifySignature on status_certificate
+        ## Issuer signature matches, public key from cert from trust store in step above
         key = root_cert.signing_public_key
         if not verifySignature(msg.status_certificate, key):
             return False
 
         # TODO: Verify status signature using status server public key from csr.status_cert
+        status_server_pub_key = msg.status_certificate.signing_public_key
+        if not verifyResponseSignature(msg, status_server_pub_key):
+            print("Bad status_sig")
+            return False
 
         # TODO: query status server that trusted cert has not been revoked
         return auth
@@ -225,7 +239,6 @@ def authenticateCert(msg):
     global serverIP
     cert = msg.client_hello.certificate
     auth = True
-    # TODO cert and status cert must share a common trust root.
     # Check pinned certs
     for i in cert.subjects:
         if pinned.get(i) != None:
@@ -281,7 +294,6 @@ def authenticateCert(msg):
         return auth
     else:
         key = trusted[issuerHash].signing_public_key
-        # TODO cert signing
         if 0 not in trusted[issuerHash].usages:
             return False
         value = verifySignature(cert, key)
@@ -654,10 +666,6 @@ def main():
 
     status = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-    
-    # TODO still need?
-    #serverSecretKey = PrivateKey.generate()
-    #serverPublicKey = serverSecretKey.public_key
 
     certStore = config["trusted_certificate_store"]
     pinnedCertStore = config["pinned_certificate_store"]
@@ -683,12 +691,6 @@ def main():
     read.ParseFromString(contents)
     serverCert = read
     print("Server Cert : " , read)
-
-    '''# TODO delete
-    for i in trusted.certificates:
-        key = i.signing_public_key
-    verifySignature(read, key)
-    # TODO end delete'''
 
     f = open(serverPrivateKey, "rb")
     contents = f.read()
