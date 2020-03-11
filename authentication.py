@@ -101,10 +101,10 @@ def verifySignature(msg, key):
 def verifyResponseSignature(msg, key):
     hashed = nacl.bindings.crypto_sign_ed25519ph_state()
     packed = msg.certificate.value
-    packed += msg.certificate.algorithm
-    packed += msg.status
-    packed += msg.valid_from
-    packed += msg.valid_length
+    packed += msg.certificate.algorithm.to_bytes(1, "big")
+    packed += msg.status.to_bytes(1, "big")
+    packed += msg.valid_from.to_bytes(8, "big")
+    packed += msg.valid_length.to_bytes(4, "big")
     packed += bytesOfFields(msg.status_certificate)
     packed += msg.status_certificate.issuer_signature
     nacl.bindings.crypto_sign_ed25519ph_update(hashed, packed)
