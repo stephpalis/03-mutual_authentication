@@ -139,7 +139,8 @@ def queryStatusServer(cert):
     status.sendto(request.SerializeToString(), (sAddr, sPort))
     # TODO what if doesn't work - add try catch
     i = 0
-    while i < 5: 
+    j = None
+    while i < 5 or j != None: 
         try:
             i += 1
             print(i)
