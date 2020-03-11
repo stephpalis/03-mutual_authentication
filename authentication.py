@@ -229,7 +229,6 @@ def authenticateStatusResponse(msg, clientCert):
             print("Bad status_sig")
             return False
 
-        # TODO: query status server that trusted cert has not been revoked
         return auth
 
 
@@ -301,6 +300,14 @@ def authenticateCert(msg):
             print("WRONG SIG")
             auth = False
             return auth
+
+        # TODO: query status server that trusted cert has not been revoked
+        resp = queryStatusServer(cert.issuer)
+        if resp != 1:
+            print("Trusted Cert has been revoked")
+            return False
+
+
 
     # TODO make sure issuer of status server is legit
     # Labeled as valid by a status server
