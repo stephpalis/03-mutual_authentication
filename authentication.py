@@ -151,11 +151,11 @@ def authenticateStatusResponse(msg):
         # TODO query status server or just the status given
         if msg.status != 1:
             return False
-        resp = queryStatusServer(msg.status_certificate)
+        '''resp = queryStatusServer(msg.status_certificate)
         if resp.status == 0 or resp.status == 2:
             print("BAD STATUS")
             auth = False
-            return auth
+            return auth'''
 
         # HashCert (client cert) and check that it matches csr.certificate
         hashed = hashCert(msg.status_certificate, 
