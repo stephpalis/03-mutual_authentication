@@ -142,6 +142,7 @@ def queryStatusServer(cert):
     while i < 5: 
         try:
             i += 1
+            print(i)
             j = status.recvfrom(2048)[0]
         except Exception:
             if i > 5:
