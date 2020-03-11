@@ -145,11 +145,13 @@ def authenticateStatusResponse(msg):
         # Valid time
         auth = validTime(msg)
         if not auth:
+            print("invalid response time")
             return auth
 
         # Check for valid status
         # TODO query status server or just the status given
         if msg.status != 1:
+            print("invalid status")
             return False
         '''resp = queryStatusServer(msg.status_certificate)
         if resp.status == 0 or resp.status == 2:
@@ -161,6 +163,7 @@ def authenticateStatusResponse(msg):
         hashed = hashCert(msg.status_certificate, 
         msg.certificate.algorithm)
         if hashed != msg.certificate.value:
+            print("doesn't match csr.cert")
             return False
 
         # Validating status_cert -->
@@ -274,11 +277,11 @@ def authenticateCert(msg):
     else:
         resp = queryStatusServer(cert)
         print("STATUS FOR CLIENT CERT ", resp.status)
-        # TODO what if unknown
+        '''# TODO what if unknown
         if resp.status == 0 or resp.status == 2:
             print("BAD STATUS")
             auth = False
-            return auth
+            return auth'''
     
     auth = authenticateStatusResponse(resp)
 
