@@ -279,6 +279,7 @@ def authenticateCert(msg):
 
     # Refer to a trustedCert or be self-signed
     # Pass verification against public key
+    issuerHash = None
     if cert.HasField("issuer"):
         # When has issuer field - not self-signed
         issuerHash = cert.issuer.value
@@ -302,7 +303,8 @@ def authenticateCert(msg):
             return auth
 
         # TODO: query status server that trusted cert has not been revoked
-        resp = queryStatusServer(cert.issuer)
+        issuer_cert = trusted[issuerHash]
+        resp = queryStatusServer(issuer_cert)
         if resp != 1:
             print("Trusted Cert has been revoked")
             return False
