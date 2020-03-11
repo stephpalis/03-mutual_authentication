@@ -191,8 +191,20 @@ def authenticateStatusResponse(msg, clientCert):
             print("invalid status cert time")
             return auth
 
-        ## TODO: issuer hash matches the client_issuer cert (hashed in two different ways) 
+        ## TODO: issuer for status cert hash matches the client_issuer cert (hashed in two different ways) 
         ###-- hash according to alg in status response
+        #csr.status_cert.issuer.value matched again trusted --> get that result
+        #check result hashed according to client_issuer hash == client_issuer
+        
+        if msg.status_certificate.issuer.value in trusted.keys():
+            root_cert = trusted[msg.status_certificate.issuer.value]
+            hashed_root = hashCert(root_cert, clientCert.issuer.algorithm)
+            if hashed_root != clientCert.issuer.value:
+                print("Roots don't match")
+                return False
+        else:
+            print("don't trust me")
+            return False
 
         ## TODO: Issuer signature matches, public key from cert from trust store in step above
 
