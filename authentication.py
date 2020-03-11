@@ -313,7 +313,7 @@ def authenticateCert(msg):
         # TODO DELETE
 
         resp = queryStatusServer(issuer_cert)
-        if resp != 1:
+        if resp.status != 1:
             print("Trusted Cert has been revoked")
             return False
 
