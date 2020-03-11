@@ -305,9 +305,11 @@ def authenticateCert(msg):
         # TODO: query status server that trusted cert has not been revoked
         issuer_cert = trusted[issuerHash]
 
-        f = open("issuer.crt", "wb")
+        # TODO DELETE
+        '''f = open("issuer.crt", "wb")
         f.write(issuer_cert.SerializeToString())
-        f.close()
+        f.close()'''
+        # TODO DELETE
 
         resp = queryStatusServer(issuer_cert)
         if resp != 1:
