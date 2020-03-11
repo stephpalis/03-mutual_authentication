@@ -140,6 +140,62 @@ def validTime(cert):
         auth = False
     return auth
 
+def authenticateStatusResponse(msg):
+        # TODO validate CertStatusResponse
+        # Valid time
+        auth = validTime(msg)
+        if not auth:
+            return auth
+
+        # Check for valid status
+        # TODO query status server or just the status given
+        if msg.status != 1:
+            return False
+        resp = queryStatusServer(msg.status_certificate)
+        if resp.status == 0 or resp.status == 2:
+            print("BAD STATUS")
+            auth = False
+            return auth
+
+        # HashCert (client cert) and check that it matches csr.certificate
+        hashed = hashCert(msg.status_certificate, 
+        msg.certificate.algorithm)
+        if hashed != msg.certificate.value:
+            return False
+
+        # Validating status_cert -->
+        status_cert = msg.status_certificate
+        ## status server ip in config should be in subject list
+        auth = False
+        for i in status_cert.subjects:
+            if i == serverIP:
+                auth = True
+        if not auth:
+            return auth
+
+        ## usage = status_signing
+        auth = False
+        for i in status_cert.usages:
+            if i == 3:
+                auth = True
+        if not auth:
+            return auth
+
+        ## valid time
+        auth = validTime(status_cert)
+        if not auth:
+            return auth
+
+        ## TODO: issuer hash matches the client_issuer cert (hashed in two different ways) 
+        ###-- hash according to alg in status response
+
+        ## TODO: Issuer signature matches, public key from cert from trust store in step above
+
+        # TODO: Verify status signature using status server public key from csr.status_cert
+        
+        # TODO: query status server that trusted cert has not been revoked
+
+
 def authenticateCert(msg):
     global serverCert
     global trusted
@@ -203,7 +259,7 @@ def authenticateCert(msg):
     else:
         key = trusted[issuerHash].signing_public_key
         # TODO cert signing
-        if 1 not in trusted[issuerHash].usages:
+        if 0 not in trusted[issuerHash].usages:
             return False
         value = verifySignature(cert, key)
         if not value:
@@ -214,61 +270,7 @@ def authenticateCert(msg):
     # TODO make sure issuer of status server is legit
     # Labeled as valid by a status server
     if msg.client_hello.HasField("certificate_status"):
-        # TODO validate CertStatusResponse
-        # Valid time
-        auth = validTime(msg.client_hello.certificate_status)
-        if not auth:
-            return auth
-
-        # Check for valid status
-        # TODO query status server or just the status given
-        if msg.client_hello.certificate_status.status != 1:
-            return False
-        resp = queryStatusServer(msg.client_hello.certificate_status.status_certificate)
-        if resp.status == 0 or resp.status == 2:
-            print("BAD STATUS")
-            auth = False
-            return auth
-
-        # HashCert (client cert) and check that it matches csr.certificate
-        hashed = hashCert(msg.client_hello.certificate_status.status_certificate, 
-        msg.client_hello.certificate_status.certificate.algorithm)
-        if hashed != msg.client_hello.certificate_status.certificate.value:
-            return False
-
-        # Validating status_cert -->
-        status_cert = msg.client_hello.certificate_status.status_certificate
-        ## status server ip in config should be in subject list
-        auth = False
-        for i in status_cert.subjects:
-            if i == serverIP:
-                auth = True
-        if not auth:
-            return auth
-
-        ## usage = status_signing
-        auth = False
-        for i in status_cert.usages:
-            if i == 3:
-                auth = True
-        if not auth:
-            return auth
-
-        ## valid time
-        auth = validTime(status_cert)
-        if not auth:
-            return auth
-
-        ## TODO: issuer hash matches the client_issuer cert (hashed in two different ways) 
-        ###-- hash according to alg in status response
-
-        ## TODO: Issuer signature matches, public key from cert from trust store in step above
-
-        # TODO: Verify status signature using status server public key from csr.status_cert
-        
-        # TODO: query status server that trusted cert has not been revoked
-
-        pass
+        resp = msg.client_hello.certificate_status
     else:
         resp = queryStatusServer(cert)
         print("STATUS FOR CLIENT CERT ", resp.status)
@@ -277,6 +279,8 @@ def authenticateCert(msg):
             print("BAD STATUS")
             auth = False
             return auth
+    
+    auth = authenticateStatusResponse(resp)
 
     return auth
 
