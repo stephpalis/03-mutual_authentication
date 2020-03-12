@@ -161,14 +161,13 @@ def queryStatusServer(cert):
 
 def validTime(cert):
     auth = True
-    if cert.valid_from + cert.valid_length < time.time():
+    if cert.valid_from + cert.valid_length < time.time() or cert.valid_from > time.time():
         print("invalid time")
         auth = False
     return auth
 
 def authenticateStatusResponse(msg, clientCert):
         global pinned
-        #TODO need to check that status-server-cert is pinned (status_certificate)
         cert = msg.status_certificate
         # Check pinned certs
         auth = False
