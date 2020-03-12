@@ -557,8 +557,20 @@ def connection_thread(c, addr):
             print("CERT AUTH")
             authenticated = authenticateCert(read)
 
+            if not authenticated:
+                response = error_message("Cert was not authenticated")
+                print(response)
+                sentMsg = response.SerializeToString()
+                sentLen = struct.pack("!H", len(sentMsg))
+                c.sendall(sentLen + sentMsg)
+                lock.acquire()
+                IPtoPreauth[remote] -= 1
+                lock.release()
+                c.close()
+                return 0
+
             resp = queryStatusServer(serverCert)
-            if not authenticated or resp == 0:
+            if resp == 0:
                 response = error_message("Cert was not authenticated")
                 print(response)
                 sentMsg = response.SerializeToString()
