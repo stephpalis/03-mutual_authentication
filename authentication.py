@@ -25,7 +25,6 @@ IPtoPreauth = {}
 serverCert = None
 status = None
 serverIP = None
-# TODO change pinned**** DON"T IGNORE****
 pinned = {}
 trusted = {}
 
@@ -168,6 +167,21 @@ def validTime(cert):
     return auth
 
 def authenticateStatusResponse(msg, clientCert):
+        global pinned
+        #TODO need to check that status-server-cert is pinned (status_certificate)
+        cert = msg.status_certificate
+        # Check pinned certs
+        for i in cert.subjects:
+            if pinned.get(i) != None:
+                for j in pinned[i]:
+                    pinnedValue = j[0]
+                    alg = j[1]
+                    hashed = hashCert(cert, alg)
+                    if hashed != pinnedValue: 
+                        print("does not match pinned")
+                        auth = False
+                        return auth
+
         # Valid time
         auth = validTime(msg)
         if not auth:
@@ -263,7 +277,6 @@ def authenticateCert(msg):
     numOfSubjects = len(cert.subjects)
     value =  False
     # If cert.usage not one of client_authentication, reject
-    #TODO need to check subject is 127.0.0.1
     for i in cert.usages:
         if i == 1 and numOfSubjects == 1:
             value = True
@@ -336,9 +349,6 @@ def authenticateCert(msg):
             print("Trusted Cert has been revoked")
             return False
 
-
-
-    # TODO make sure issuer of status server is legit
     # Labeled as valid by a status server
     if msg.client_hello.HasField("certificate_status"):
         resp = msg.client_hello.certificate_status
