@@ -171,7 +171,7 @@ def authenticateStatusResponse(msg, clientCert):
         #TODO need to check that status-server-cert is pinned (status_certificate)
         cert = msg.status_certificate
         # Check pinned certs
-        auth = True
+        auth = False
         for i in cert.subjects:
             if pinned.get(i) != None:
                 for j in pinned[i]:
@@ -182,6 +182,7 @@ def authenticateStatusResponse(msg, clientCert):
                     hashed = hashCert(cert, alg)
                     print("HASHED ", hashed)
                     if hashed == pinnedValue: 
+                        auth = True
                         break
         if not auth:
             print("does not match pinned")
@@ -265,7 +266,7 @@ def authenticateCert(msg):
     global trusted
     global serverIP
     cert = msg.client_hello.certificate
-    auth = True
+    auth = False
     # Check pinned certs
     for i in cert.subjects:
         if pinned.get(i) != None:
@@ -274,6 +275,7 @@ def authenticateCert(msg):
                 alg = j[1]
                 hashed = hashCert(cert, alg)
                 if hashed == pinnedValue: 
+                    auth = True
                     break
         if not auth:
             print("does not match pinned")
