@@ -47,7 +47,11 @@ def readPinned(config):
 
     for i in store.pinned_certificates:
         print(i)
-        pinned[i.subject] = (i.certificate.value, i.certificate.algorithm)
+        if i.subject in pinned.keys():
+            pinned[i.subject].append((i.certificate.value, i.certificate.algorithm))
+        else:
+            pinned[i.subject] = []
+            pinned[i.subject].append((i.certificate.value, i.certificate.algorithm))
     print(pinned)
     print("LENGTH OF PINNED ________________", len(pinned))
 
@@ -246,13 +250,14 @@ def authenticateCert(msg):
     # Check pinned certs
     for i in cert.subjects:
         if pinned.get(i) != None:
-            pinnedValue = pinned[i][0]
-            alg = pinned[i][1]
-            hashed = hashCert(cert, alg)
-            if hashed != pinnedValue: 
-                print("does not match pinned")
-                auth = False
-                return auth
+            for j in pinned[i]:
+                pinnedValue = pinned[j][0]
+                alg = pinned[j][1]
+                hashed = hashCert(cert, alg)
+                if hashed != pinnedValue: 
+                    print("does not match pinned")
+                    auth = False
+                    return auth
 
     # Match Expected values
     numOfSubjects = len(cert.subjects)
