@@ -138,23 +138,15 @@ def queryStatusServer(cert):
     print("REQUEST ", request)
     status.sendto(request.SerializeToString(), (sAddr, sPort))
     # TODO what if doesn't work - add try catch
-    i = 0
-    j = None
-    while j == None and i < 5: 
-        try:
-            i += 1
-            print(i)
-            j = status.recvfrom(2048)[0]
-        except Exception:
-            if i > 5:
-                return 0
-
-    print("RESPONSE ", j)
-
-    resp = nstp_v4_pb2.CertificateStatusResponse()
-    resp.ParseFromString(j)
-    print("\n\n\n\n STATUS ", resp.status)
-    print(resp)
+    try:
+        j = status.recvfrom(2048)[0]
+        print("RESPONSE ", j)
+        resp = nstp_v4_pb2.CertificateStatusResponse()
+        resp.ParseFromString(j)
+        print("\n\n\n\n STATUS ", resp.status)
+        print(resp)
+    except Exception:
+        return 0
     return resp
 
 def validTime(cert):
