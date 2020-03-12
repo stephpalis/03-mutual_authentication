@@ -545,7 +545,9 @@ def connection_thread(c, addr):
             # Cert Authentication
             print("CERT AUTH")
             authenticated = authenticateCert(read)
-            if not authenticated:
+            # TODO validate resp
+            resp = queryStatusServer(serverCert)
+            if not authenticated or resp == 0:
                 response = error_message("Cert was not authenticated")
                 print(response)
                 sentMsg = response.SerializeToString()
@@ -557,12 +559,8 @@ def connection_thread(c, addr):
                 c.close()
                 return 0
 
-            # TODO validate resp
-            resp = queryStatusServer(serverCert)
-            if resp == 0:
-                return False
             clientPublicKey = read.client_hello.certificate.encryption_public_key
-            pass
+            #pass
 
         else:
             print(read.client_hello.HasField("certificate"))
