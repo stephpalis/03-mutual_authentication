@@ -94,8 +94,11 @@ def verifySignature(msg, key):
     hashed = nacl.bindings.crypto_sign_ed25519ph_state()
     packed = bytesOfFields(msg)
     nacl.bindings.crypto_sign_ed25519ph_update(hashed, packed)
-    value = nacl.bindings.crypto_sign_ed25519ph_final_verify(hashed, msg.issuer_signature, key)
-    print("VALUE :", value )
+    try:
+        value = nacl.bindings.crypto_sign_ed25519ph_final_verify(hashed, msg.issuer_signature, key)
+        print("VALUE :", value )
+    except Exception:
+        return False
     return value
 
 def verifyResponseSignature(msg, key):
