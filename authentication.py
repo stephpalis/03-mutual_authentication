@@ -111,8 +111,11 @@ def verifyResponseSignature(msg, key):
     packed += bytesOfFields(msg.status_certificate)
     packed += msg.status_certificate.issuer_signature
     nacl.bindings.crypto_sign_ed25519ph_update(hashed, packed)
-    value = nacl.bindings.crypto_sign_ed25519ph_final_verify(hashed, msg.status_signature, key)
-    print("RESPONSE VALUE :", value )
+    try:
+        value = nacl.bindings.crypto_sign_ed25519ph_final_verify(hashed, msg.status_signature, key)
+        print("RESPONSE VALUE :", value )
+    except Exception:
+        return False
     return value
 
 def readConfig():
@@ -571,7 +574,7 @@ def connection_thread(c, addr):
 
             resp = queryStatusServer(serverCert)
             if resp == 0:
-                response = error_message("Cert was not authenticated")
+                response = error_message("Queried Response not valid")
                 print(response)
                 sentMsg = response.SerializeToString()
                 sentLen = struct.pack("!H", len(sentMsg))
