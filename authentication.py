@@ -305,6 +305,7 @@ def authenticateCert(msg):
             print("not right usage")
             return False
         if not validTime(trusted[issuerHash]):
+            print("invalid time")
             return False
         value = verifySignature(cert, key)
         if not value:
