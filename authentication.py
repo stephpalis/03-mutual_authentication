@@ -218,6 +218,7 @@ def authenticateStatusResponse(msg, clientCert):
         ## Issuer signature matches, public key from cert from trust store in step above
         key = root_cert.signing_public_key
         if not verifySignature(msg.status_certificate, key):
+            print("not verified")
             return False
 
         #  Verify status signature using status server public key from csr.status_cert
@@ -308,6 +309,7 @@ def authenticateCert(msg):
 
         resp = queryStatusServer(issuer_cert)
         if resp == 0:
+            print("bad query")
             return False
         if resp.status != 1:
             print("Trusted Cert has been revoked")
@@ -322,6 +324,7 @@ def authenticateCert(msg):
     else:
         resp = queryStatusServer(cert)
         if resp == 0:
+            print("bad query")
             return False
         print("STATUS FOR CLIENT CERT ", resp.status)
 
