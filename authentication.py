@@ -226,7 +226,7 @@ def authenticateStatusResponse(msg, clientCert):
         if not verifyResponseSignature(msg, status_server_pub_key):
             print("Bad status_sig")
             return False
-
+        print("FINAL AUTH ", auth)
         return auth
 
 
