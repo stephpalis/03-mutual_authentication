@@ -137,7 +137,7 @@ def queryStatusServer(cert):
     request.certificate.CopyFrom(certHash)
     print("REQUEST ", request)
     status.sendto(request.SerializeToString(), (sAddr, sPort))
-    # TODO what if doesn't work - add try catch
+
     try:
         j = status.recvfrom(2048)[0]
         print("RESPONSE ", j)
@@ -167,11 +167,6 @@ def authenticateStatusResponse(msg, clientCert):
         if msg.status != 1:
             print("invalid status")
             return False
-        '''resp = queryStatusServer(msg.status_certificate)
-        if resp.status == 0 or resp.status == 2:
-            print("BAD STATUS")
-            auth = False
-            return auth'''
 
         # HashCert (client cert) and check that it matches csr.certificate
         hashed = hashCert(clientCert, msg.certificate.algorithm)
@@ -325,11 +320,7 @@ def authenticateCert(msg):
         if resp == 0:
             return False
         print("STATUS FOR CLIENT CERT ", resp.status)
-        '''# TODO what if unknown
-        if resp.status == 0 or resp.status == 2:
-            print("BAD STATUS")
-            auth = False
-            return auth'''
+
     clientCert = msg.client_hello.certificate
     auth = authenticateStatusResponse(resp, clientCert)
 
@@ -545,7 +536,7 @@ def connection_thread(c, addr):
             # Cert Authentication
             print("CERT AUTH")
             authenticated = authenticateCert(read)
-            # TODO validate resp
+
             resp = queryStatusServer(serverCert)
             if not authenticated or resp == 0:
                 response = error_message("Cert was not authenticated")
