@@ -298,7 +298,7 @@ def authenticateCert(msg):
         return auth
     else:
         key = trusted[issuerHash].signing_public_key
-        if len(trusted[issuerHash].subject) < 1:
+        if len(trusted[issuerHash].subjects) < 1:
             return False
         if 0 not in trusted[issuerHash].usages:
             print("not right usage")
