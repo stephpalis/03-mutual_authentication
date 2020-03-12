@@ -273,10 +273,11 @@ def authenticateCert(msg):
                 pinnedValue = j[0]
                 alg = j[1]
                 hashed = hashCert(cert, alg)
-                if hashed != pinnedValue: 
-                    print("does not match pinned")
-                    auth = False
-                    return auth
+                if hashed == pinnedValue: 
+                    break
+        if not auth:
+            print("does not match pinned")
+            return auth
 
     # Match Expected values
     numOfSubjects = len(cert.subjects)
