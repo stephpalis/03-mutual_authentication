@@ -334,6 +334,7 @@ def authenticateCert(msg):
     clientCert = msg.client_hello.certificate
     auth = authenticateStatusResponse(resp, clientCert)
 
+    print("authenticate cert final auth ", auth)
     return auth
 
 def error_message(reason):
