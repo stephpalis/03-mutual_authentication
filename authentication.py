@@ -175,11 +175,11 @@ def authenticateStatusResponse(msg, clientCert):
             if pinned.get(i) != None:
                 for j in pinned[i]:
                     pinnedValue = j[0]
-                    print(pinnedValue)
+                    print("PINNED: ", pinnedValue)
                     alg = j[1]
-                    print(alg)
+                    print("ALG ", alg)
                     hashed = hashCert(cert, alg)
-                    print(hashed)
+                    print("HASHED ", hashed)
                     if hashed != pinnedValue: 
                         print("does not match pinned")
                         auth = False
