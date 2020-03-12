@@ -49,6 +49,7 @@ def readPinned(config):
         print(i)
         pinned[i.subject] = (i.certificate.value, i.certificate.algorithm)
     print(pinned)
+    print("LENGTH OF PINNED ________________", len(pinned))
 
 def readTrusted(config):
     global trusted
