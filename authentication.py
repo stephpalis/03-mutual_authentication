@@ -242,6 +242,7 @@ def authenticateCert(msg):
             alg = pinned[i][1]
             hashed = hashCert(cert, alg)
             if hashed != pinnedValue: 
+                print("does not match pinned")
                 auth = False
                 return auth
 
@@ -255,6 +256,7 @@ def authenticateCert(msg):
             value = True
             break
     if not value:
+        print("wrong usages or wrong num of subjects")
         auth = False
         return auth
 
