@@ -251,8 +251,8 @@ def authenticateCert(msg):
     for i in cert.subjects:
         if pinned.get(i) != None:
             for j in pinned[i]:
-                pinnedValue = pinned[j][0]
-                alg = pinned[j][1]
+                pinnedValue = j[0]
+                alg = j[1]
                 hashed = hashCert(cert, alg)
                 if hashed != pinnedValue: 
                     print("does not match pinned")
