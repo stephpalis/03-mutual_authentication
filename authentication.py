@@ -282,7 +282,7 @@ def authenticateCert(msg):
     # Pass verification against public key
     issuerHash = None
     if cert.HasField("issuer"):
-        if cert.issuer.algorithm != 1 or cert.issuer.algorithm != 2:
+        if cert.issuer.algorithm != 1 and cert.issuer.algorithm != 2:
             print("bad alg")
             return False
         # When has issuer field - not self-signed
@@ -298,6 +298,8 @@ def authenticateCert(msg):
         return auth
     else:
         key = trusted[issuerHash].signing_public_key
+        if len(trusted[issuerHash].subject) < 1:
+            return False
         if 0 not in trusted[issuerHash].usages:
             print("not right usage")
             return False
