@@ -274,6 +274,7 @@ def authenticateCert(msg):
             u = True
     if not u:
         auth = u
+        print("not right flag")
         return auth
 
     # Refer to a trustedCert or be self-signed
@@ -294,6 +295,7 @@ def authenticateCert(msg):
     else:
         key = trusted[issuerHash].signing_public_key
         if 0 not in trusted[issuerHash].usages:
+            print("not right usage")
             return False
         value = verifySignature(cert, key)
         if not value:
