@@ -331,6 +331,7 @@ def authenticateCert(msg):
         auth = False
         return auth
     else:
+        issuer_cert = trusted[issuerHash]
         key = trusted[issuerHash].signing_public_key
         if len(trusted[issuerHash].subjects) < 1:
             print("no subjects")
@@ -341,11 +342,17 @@ def authenticateCert(msg):
         if not validTime(trusted[issuerHash]):
             print("invalid time")
             return False
-        value = verifySignature(cert, key)
+        value = verifySignature(issuer_cert, key)
         if not value:
             print("WRONG SIG")
             auth = False
             return auth
+        value = verifySignature(cert, key)
+        if not value:
+            print("WRONG CLIENT SIG")
+            auth = False
+            return auth
+
 
         # Query status server that trusted cert has not been revoked
         issuer_cert = trusted[issuerHash]
