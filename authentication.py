@@ -170,9 +170,10 @@ def authenticateStatusResponse(msg, clientCert):
         global pinned
         cert = msg.status_certificate
         # Check pinned certs
-        auth = False
+        auth = True
         for i in cert.subjects:
             if pinned.get(i) != None:
+                auth = False
                 for j in pinned[i]:
                     pinnedValue = j[0]
                     print("PINNED: ", pinnedValue)
@@ -265,10 +266,11 @@ def authenticateCert(msg):
     global trusted
     global serverIP
     cert = msg.client_hello.certificate
-    auth = False
+    auth = True
     # Check pinned certs
     for i in cert.subjects:
         if pinned.get(i) != None:
+            auth = False
             for j in pinned[i]:
                 pinnedValue = j[0]
                 alg = j[1]
